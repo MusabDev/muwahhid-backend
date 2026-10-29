@@ -24,10 +24,13 @@ class AuthorResource extends JsonResource
             'name_ar' => $this->name_ar,
             'name_bn' => $this->name_bn,
             'name_translit' => $this->name_translit,
+            'death_year_ah' => $this->death_year_ah,
             'about_md' => $this->about_md,
             'books_count' => $this->whenCounted('books'),
+            'explained_books_count' => $this->whenCounted('explainedBooks'),
             'dars_series_count' => $this->whenCounted('darsSeries'),
             'books' => BookResource::collection($this->whenLoaded('books')),
+            'explained_books' => BookResource::collection($this->whenLoaded('explainedBooks')),
             'dars_series' => DarsSeriesResource::collection($this->whenLoaded('darsSeries')),
         ];
     }

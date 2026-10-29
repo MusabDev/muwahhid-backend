@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['slug', 'name_ar', 'name_bn', 'name_translit', 'about_md'])]
+#[Fillable(['slug', 'name_ar', 'name_bn', 'name_translit', 'death_year_ah', 'about_md'])]
 #[Hidden(['name_ar_normalized'])]
 class Author extends Model
 {
@@ -30,6 +30,16 @@ class Author extends Model
     public function books(): HasMany
     {
         return $this->hasMany(Book::class);
+    }
+
+    /**
+     * Books this author wrote a sharh (explanation) of.
+     *
+     * @return HasMany<Book, $this>
+     */
+    public function explainedBooks(): HasMany
+    {
+        return $this->hasMany(Book::class, 'explainer_id');
     }
 
     /**

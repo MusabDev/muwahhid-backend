@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Author;
 use App\Models\Book;
+use App\Models\Category;
 use App\Models\DarsSeries;
 use App\Services\BookImporter;
 use App\Services\TranscriptImporter;
@@ -20,11 +21,15 @@ class DemoContentSeeder extends Seeder
             'name_ar' => 'محمد بن عبد الوهاب',
             'name_bn' => 'মুহাম্মাদ ইবনু আব্দিল ওয়াহহাব',
             'name_translit' => 'Muhammad ibn Abdil Wahhab',
+            'death_year_ah' => 1206,
             'about_md' => 'শাইখুল ইসলাম মুহাম্মাদ ইবনু আব্দিল ওয়াহহাব (রহিমাহুল্লাহ)।',
         ]);
 
+        $aqidah = Category::where('slug', 'aqidah')->value('id');
+
         $book = Book::updateOrCreate(['slug' => 'al-usul-ath-thalathah'], [
             'author_id' => $author->id,
+            'category_id' => $aqidah,
             'title_ar' => 'الأصول الثلاثة',
             'title_bn' => 'তিনটি মূলনীতি',
             'title_translit' => 'Al-Usul ath-Thalathah',
@@ -65,6 +70,7 @@ class DemoContentSeeder extends Seeder
 
         $series = DarsSeries::updateOrCreate(['slug' => 'sharh-al-usul-ath-thalathah'], [
             'author_id' => $author->id,
+            'category_id' => $aqidah,
             'book_id' => $book->id,
             'title_ar' => 'شرح الأصول الثلاثة',
             'title_bn' => 'তিনটি মূলনীতির ব্যাখ্যা',

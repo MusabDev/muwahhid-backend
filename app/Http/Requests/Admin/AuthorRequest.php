@@ -32,6 +32,7 @@ class AuthorRequest extends FormRequest
             'name_ar' => [$required, 'string', 'max:255'],
             'name_bn' => [$required, 'string', 'max:255'],
             'name_translit' => [$required, 'string', 'max:255'],
+            'death_year_ah' => ['nullable', 'integer', 'min:1', 'max:1500'],
             'about_md' => ['nullable', 'string'],
         ];
     }

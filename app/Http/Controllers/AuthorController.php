@@ -14,6 +14,7 @@ class AuthorController extends Controller
         $authors = Author::query()
             ->withCount([
                 'books' => fn ($query) => $query->published(),
+                'explainedBooks' => fn ($query) => $query->published(),
                 'darsSeries' => fn ($query) => $query->published(),
             ])
             ->orderBy('name_translit')
@@ -25,8 +26,9 @@ class AuthorController extends Controller
     public function show(Author $author): AuthorResource
     {
         $author->load([
-            'books' => fn ($query) => $query->published()->orderBy('title_translit'),
-            'darsSeries' => fn ($query) => $query->published()->withCount('durus')->orderBy('title_translit'),
+            'books' => fn ($query) => $query->published()->with(['explainer', 'category'])->withCount('pages')->orderBy('title_translit'),
+            'explainedBooks' => fn ($query) => $query->published()->with(['author', 'category'])->withCount('pages')->orderBy('title_translit'),
+            'darsSeries' => fn ($query) => $query->published()->withCardStats()->orderBy('title_translit'),
         ]);
 
         return new AuthorResource($author);

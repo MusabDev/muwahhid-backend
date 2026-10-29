@@ -31,6 +31,7 @@ class DarsSeriesRequest extends FormRequest
             'slug' => [$required, 'string', 'max:255', 'alpha_dash', Rule::unique('dars_series', 'slug')->ignore($this->route('darsSeries'))],
             'author_id' => [$required, 'integer', 'exists:authors,id'],
             'book_id' => ['nullable', 'integer', 'exists:books,id'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'title_ar' => [$required, 'string', 'max:255'],
             'title_bn' => [$required, 'string', 'max:255'],
             'title_translit' => [$required, 'string', 'max:255'],

@@ -19,7 +19,7 @@ class LibraryController extends Controller
         $request->validate(['status' => ['nullable', Rule::enum(BookStatus::class)]]);
 
         $entries = $request->user()->library()
-            ->with('book.author')
+            ->with(['book.author', 'book.explainer'])
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->orderByDesc('last_read_at')
             ->orderByDesc('updated_at')

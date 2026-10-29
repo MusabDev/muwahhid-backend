@@ -15,7 +15,7 @@ class AuthorController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $authors = Author::query()
-            ->withCount(['books', 'darsSeries'])
+            ->withCount(['books', 'explainedBooks', 'darsSeries'])
             ->when($request->filled('q'), fn ($query) => $query->whereRaw(
                 "(name_ar || ' ' || name_bn || ' ' || name_translit) ILIKE ?",
                 ['%'.$request->string('q').'%'],
@@ -45,7 +45,7 @@ class AuthorController extends Controller
 
     public function destroy(Author $author): Response
     {
-        abort_if($author->books()->exists() || $author->darsSeries()->exists(), 409, 'Delete or reassign this author\'s books and dars series first.');
+        abort_if($author->books()->exists() || $author->explainedBooks()->exists() || $author->darsSeries()->exists(), 409, 'Delete or reassign this author\'s books, sharh books and dars series first.');
 
         $author->delete();
 

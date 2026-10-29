@@ -19,7 +19,7 @@ class BookPdfRenderer
      */
     public function render(Book $book, ExportVariant $variant, string $arabicFont, string $banglaFont): string
     {
-        $book->load(['author', 'tocEntries' => fn ($query) => $query->whereNull('parent_id')->with('children.children'), 'pages.sentences', 'pages.footnotes']);
+        $book->load(['author', 'explainer', 'tocEntries' => fn ($query) => $query->whereNull('parent_id')->with('children.children'), 'pages.sentences', 'pages.footnotes']);
 
         $fontCss = $this->fontCss($arabicFont, $banglaFont);
         $title = match ($variant) {

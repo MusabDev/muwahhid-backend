@@ -39,11 +39,21 @@ body { margin: 0; color: #1a1a1a; font-size: 11.5pt; line-height: 1.75; }
 <section class="sheet cover">
     @if ($variant !== \App\Enums\ExportVariant::Bangla)
         <h1 class="ar">{{ $book->title_ar }}</h1>
-        <div class="author ar">{{ $book->author->name_ar }}</div>
+        @if ($book->is_sharh && $book->explainer)
+            <div class="author ar">شرح: {{ $book->explainer->name_ar }}</div>
+            <div class="author ar">المتن: {{ $book->author->name_ar }}</div>
+        @else
+            <div class="author ar">{{ $book->author->name_ar }}</div>
+        @endif
     @endif
     @if ($variant !== \App\Enums\ExportVariant::Arabic)
         <h1 class="bn">{{ $book->title_bn }}</h1>
-        <div class="author bn">{{ $book->author->name_bn }}</div>
+        @if ($book->is_sharh && $book->explainer)
+            <div class="author bn">ব্যাখ্যা: {{ $book->explainer->name_bn }}</div>
+            <div class="author bn">মূল গ্রন্থ: {{ $book->author->name_bn }}</div>
+        @else
+            <div class="author bn">{{ $book->author->name_bn }}</div>
+        @endif
     @endif
 </section>
 

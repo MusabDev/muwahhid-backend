@@ -6,11 +6,13 @@ use App\Http\Controllers\AuthorController;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\BookExportController;
 use App\Http\Controllers\BookPageController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DarsController;
 use App\Http\Controllers\DarsSeriesController;
 use App\Http\Controllers\Me;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SentenceController;
+use App\Http\Controllers\StatsController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -35,6 +37,8 @@ Route::middleware('auth:sanctum')->group(function () {
 |--------------------------------------------------------------------------
 */
 
+Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+
 Route::get('/authors', [AuthorController::class, 'index'])->name('authors.index');
 Route::get('/authors/{author}', [AuthorController::class, 'show'])->name('authors.show');
 
@@ -47,6 +51,8 @@ Route::post('/books/{book}/exports', [BookExportController::class, 'store'])->mi
 Route::get('/books/{book:id}/exports/{export}/download', [BookExportController::class, 'download'])->name('books.exports.download');
 
 Route::get('/sentences/{sentence}', [SentenceController::class, 'show'])->name('sentences.show');
+
+Route::get('/stats', StatsController::class)->name('stats');
 
 Route::get('/search', [SearchController::class, 'global'])->middleware('throttle:60,1')->name('search');
 
@@ -88,6 +94,8 @@ Route::middleware('auth:sanctum')->prefix('me')->name('me.')->group(function () 
 */
 
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::apiResource('categories', Admin\CategoryController::class)->except('show')->parameters(['categories' => 'category:id']);
+
     Route::apiResource('authors', Admin\AuthorController::class)->parameters(['authors' => 'author:id']);
 
     Route::apiResource('books', Admin\BookController::class)->parameters(['books' => 'book:id']);

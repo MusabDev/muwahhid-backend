@@ -17,6 +17,8 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Admin', 'password' => env('ADMIN_PASSWORD', 'password')],
         )->forceFill(['is_admin' => true])->save();
 
+        $this->call(CategorySeeder::class);
+
         if (app()->isLocal()) {
             $this->call(DemoContentSeeder::class);
         }

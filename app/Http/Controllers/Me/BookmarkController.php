@@ -14,7 +14,7 @@ class BookmarkController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $bookmarks = $request->user()->bookmarks()
-            ->with('book')
+            ->with(['book.author', 'book.explainer'])
             ->when($request->filled('book_id'), fn ($query) => $query->where('book_id', $request->integer('book_id')))
             ->orderBy('book_id')
             ->orderBy('page_number')

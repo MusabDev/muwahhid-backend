@@ -25,7 +25,7 @@ class SearchService
 
         return [
             'books' => Book::published()
-                ->with('author')
+                ->with(['author', 'explainer'])
                 ->whereRaw("(title_ar_normalized || ' ' || title_bn || ' ' || title_translit) ILIKE ?", [$pattern])
                 ->limit($limit)
                 ->get(),
@@ -34,6 +34,8 @@ class SearchService
                 ->limit($limit)
                 ->get(),
             'dars_series' => DarsSeries::published()
+                ->with('author')
+                ->withCardStats()
                 ->whereRaw("(title_ar_normalized || ' ' || title_bn || ' ' || title_translit) ILIKE ?", [$pattern])
                 ->limit($limit)
                 ->get(),

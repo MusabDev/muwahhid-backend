@@ -19,7 +19,7 @@ class BookController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $books = Book::query()
-            ->with('author')
+            ->with(['author', 'explainer', 'category'])
             ->withCount('pages')
             ->when($request->filled('author_id'), fn ($query) => $query->where('author_id', $request->integer('author_id')))
             ->when($request->filled('q'), fn ($query) => $query->whereRaw(
@@ -34,12 +34,12 @@ class BookController extends Controller
 
     public function store(BookRequest $request): BookResource
     {
-        return new BookResource(Book::create($request->validated())->load('author'));
+        return new BookResource(Book::create($request->validated())->load(['author', 'explainer', 'category']));
     }
 
     public function show(Book $book): BookResource
     {
-        $book->load(['author', 'tocEntries' => fn ($query) => $query->whereNull('parent_id')->with('children.children.children')])
+        $book->load(['author', 'explainer', 'category', 'tocEntries' => fn ($query) => $query->whereNull('parent_id')->with('children.children.children')])
             ->loadCount('pages');
 
         return new BookResource($book);
@@ -55,7 +55,7 @@ class BookController extends Controller
             $book->bumpContentVersion();
         }
 
-        return new BookResource($book->load('author'));
+        return new BookResource($book->load(['author', 'explainer', 'category']));
     }
 
     public function destroy(Book $book): Response

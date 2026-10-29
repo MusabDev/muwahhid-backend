@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
-#[Fillable(['slug', 'author_id', 'title_ar', 'title_bn', 'title_translit', 'about_md', 'is_published'])]
+#[Fillable(['slug', 'author_id', 'category_id', 'is_sharh', 'explainer_id', 'title_ar', 'title_bn', 'title_translit', 'about_md', 'is_published'])]
 #[Hidden(['title_ar_normalized'])]
 class Book extends Model
 {
@@ -30,6 +30,7 @@ class Book extends Model
     {
         return [
             'is_published' => 'boolean',
+            'is_sharh' => 'boolean',
             'content_version' => 'integer',
         ];
     }
@@ -43,6 +44,22 @@ class Book extends Model
     protected function published(Builder $query): void
     {
         $query->where('is_published', true);
+    }
+
+    /**
+     * Match a search term against the titles (Arabic normalized, Bangla, transliteration)
+     * and the names of the author and, for a sharh, the explainer.
+     */
+    #[Scope]
+    protected function matching(Builder $query, string $term): void
+    {
+        $pattern = '%'.addcslashes(ArabicNormalizer::normalize($term), '%_\\').'%';
+        $names = fn (Builder $author) => $author->whereRaw("(name_ar_normalized || ' ' || name_bn || ' ' || name_translit) ILIKE ?", [$pattern]);
+
+        $query->where(fn (Builder $inner) => $inner
+            ->whereRaw("(title_ar_normalized || ' ' || title_bn || ' ' || title_translit) ILIKE ?", [$pattern])
+            ->orWhereHas('author', $names)
+            ->orWhereHas('explainer', $names));
     }
 
     public function coverUrl(): ?string
@@ -64,6 +81,25 @@ class Book extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(Author::class);
+    }
+
+    /**
+     * @return BelongsTo<Category, $this>
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * The scholar who wrote the explanation, when this book is a sharh.
+     * `author` remains the author of the original text (matn).
+     *
+     * @return BelongsTo<Author, $this>
+     */
+    public function explainer(): BelongsTo
+    {
+        return $this->belongsTo(Author::class, 'explainer_id');
     }
 
     /**
