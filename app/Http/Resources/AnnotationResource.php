@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Annotation;
+use App\Models\BookSentence;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -30,8 +31,14 @@ class AnnotationResource extends JsonResource
             'quote' => $this->quote,
             'color' => $this->color,
             'note' => $this->note,
+            'group_id' => $this->group_id,
+            'page_number' => $this->when(
+                $this->relationLoaded('annotatable'),
+                fn () => $this->annotatable instanceof BookSentence ? $this->annotatable->page?->number : null,
+            ),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+            'book' => new BookResource($this->whenLoaded('book')),
         ];
     }
 }

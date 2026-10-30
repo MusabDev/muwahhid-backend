@@ -81,6 +81,13 @@ Route::middleware('auth:sanctum')->prefix('me')->name('me.')->group(function () 
     Route::put('/library/{book:id}/progress', [Me\LibraryController::class, 'updateProgress'])->name('library.progress');
     Route::delete('/library/{book:id}', [Me\LibraryController::class, 'destroy'])->name('library.destroy');
 
+    Route::get('/durus', [Me\DurusController::class, 'index'])->name('durus.index');
+    Route::get('/durus/{dars}', [Me\DurusController::class, 'show'])->name('durus.show');
+    Route::put('/durus/{dars}/status', [Me\DurusController::class, 'updateStatus'])->name('durus.status');
+    Route::put('/durus/{dars}/progress', [Me\DurusController::class, 'updateProgress'])->name('durus.progress');
+    Route::delete('/durus/{dars}', [Me\DurusController::class, 'destroy'])->name('durus.destroy');
+    Route::put('/dars-series/{darsSeries:id}/status', [Me\DurusController::class, 'updateSeriesStatus'])->name('dars-series.status');
+
     Route::apiResource('annotations', Me\AnnotationController::class)->except('show');
     Route::apiResource('bookmarks', Me\BookmarkController::class)->except('show');
 

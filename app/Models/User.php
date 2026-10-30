@@ -43,6 +43,14 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasMany<UserDars, $this>
+     */
+    public function durus(): HasMany
+    {
+        return $this->hasMany(UserDars::class);
+    }
+
+    /**
      * @return HasMany<Annotation, $this>
      */
     public function annotations(): HasMany

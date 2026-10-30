@@ -8,6 +8,7 @@ use App\Http\Resources\AnnotationResource;
 use App\Models\Annotation;
 use App\Models\BookSentence;
 use App\Models\DarsSegment;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
@@ -22,6 +23,7 @@ class AnnotationController extends Controller
             'book_id' => ['nullable', 'integer'],
             'dars_id' => ['nullable', 'integer'],
             'page' => ['nullable', 'integer'],
+            'has_note' => ['nullable', 'boolean'],
         ]);
 
         $annotations = $request->user()->annotations()
@@ -34,6 +36,12 @@ class AnnotationController extends Controller
                     ->join('book_pages', 'book_pages.id', '=', 'book_sentences.page_id')
                     ->where('book_sentences.book_id', $request->integer('book_id'))
                     ->where('book_pages.number', $request->integer('page'))))
+            // Library-wide notes carry their book so they can be listed by kitab
+            ->when($request->boolean('has_note'), fn ($query) => $query
+                ->whereNotNull('note')
+                ->where('note', '!=', '')
+                ->with(['book.author', 'book.explainer']))
+            ->with(self::withPage())
             ->latest()
             ->get();
 
@@ -44,7 +52,7 @@ class AnnotationController extends Controller
     {
         $data = $request->validate(self::rules());
 
-        return new AnnotationResource($request->user()->annotations()->create(self::resolve($data)));
+        return new AnnotationResource($request->user()->annotations()->create(self::resolve($data))->load(self::withPage()));
     }
 
     public function update(Request $request, Annotation $annotation): AnnotationResource
@@ -56,7 +64,7 @@ class AnnotationController extends Controller
             'note' => ['nullable', 'string', 'max:10000'],
         ]));
 
-        return new AnnotationResource($annotation);
+        return new AnnotationResource($annotation->load(self::withPage()));
     }
 
     public function destroy(Request $request, Annotation $annotation): Response
@@ -66,6 +74,16 @@ class AnnotationController extends Controller
         $annotation->delete();
 
         return response()->noContent();
+    }
+
+    /**
+     * The annotated text, with the page a book sentence sits on.
+     *
+     * @return array<string, mixed>
+     */
+    private static function withPage(): array
+    {
+        return ['annotatable' => fn (MorphTo $morph) => $morph->morphWith([BookSentence::class => ['page']])];
     }
 
     /**
@@ -82,6 +100,7 @@ class AnnotationController extends Controller
             'quote' => ['required', 'string', 'max:5000'],
             'color' => ['nullable', 'string', 'max:20'],
             'note' => ['nullable', 'string', 'max:10000'],
+            'group_id' => ['nullable', 'string', 'max:64'],
         ];
     }
 
@@ -112,6 +131,7 @@ class AnnotationController extends Controller
             'quote' => $data['quote'],
             'color' => $data['color'] ?? null,
             'note' => $data['note'] ?? null,
+            'group_id' => $data['group_id'] ?? null,
         ];
     }
 }

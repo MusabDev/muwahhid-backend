@@ -7,7 +7,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Annotation;
 use App\Models\Book;
 use App\Models\Bookmark;
+use App\Models\Dars;
 use App\Models\UserBook;
+use App\Models\UserDars;
 use App\Models\UserSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,9 +22,9 @@ use Illuminate\Validation\ValidationException;
 class SyncController extends Controller
 {
     /**
-     * Merge a guest's localStorage data (library, annotations, bookmarks, settings)
+     * Merge a guest's localStorage data (library, durus, annotations, bookmarks, settings)
      * into the account after login. Existing account data wins on conflicts,
-     * except reading progress, where the most recent read wins.
+     * except reading and listening progress, where the most recent one wins.
      */
     public function store(Request $request): JsonResponse
     {
@@ -34,6 +36,12 @@ class SyncController extends Controller
             'library.*.last_sentence_id' => ['nullable', 'integer'],
             'library.*.progress' => ['nullable', 'numeric', 'between:0,100'],
             'library.*.last_read_at' => ['nullable', 'date'],
+            'durus' => ['sometimes', 'array', 'max:5000'],
+            'durus.*.dars_id' => ['required', 'integer'],
+            'durus.*.status' => ['nullable', Rule::enum(BookStatus::class)],
+            'durus.*.position_seconds' => ['nullable', 'numeric', 'min:0'],
+            'durus.*.progress' => ['nullable', 'numeric', 'between:0,100'],
+            'durus.*.last_played_at' => ['nullable', 'date'],
             'annotations' => ['sometimes', 'array', 'max:5000'],
             'bookmarks' => ['sometimes', 'array', 'max:2000'],
             'bookmarks.*.book_id' => ['required', 'integer'],
@@ -44,7 +52,7 @@ class SyncController extends Controller
         ]);
 
         $user = $request->user();
-        $counts = ['library' => 0, 'annotations' => 0, 'bookmarks' => 0, 'skipped' => 0];
+        $counts = ['library' => 0, 'durus' => 0, 'annotations' => 0, 'bookmarks' => 0, 'skipped' => 0];
 
         DB::transaction(function () use ($request, $user, &$counts) {
             $bookIds = Book::whereIn('id', collect($request->input('library', []))->pluck('book_id')
@@ -79,6 +87,32 @@ class SyncController extends Controller
 
                 $entry->save();
                 $counts['library']++;
+            }
+
+            $darsIds = Dars::whereIn('id', collect($request->input('durus', []))->pluck('dars_id'))->pluck('id')->flip();
+
+            foreach ($request->input('durus', []) as $item) {
+                if (! isset($darsIds[$item['dars_id']])) {
+                    $counts['skipped']++;
+
+                    continue;
+                }
+
+                $entry = UserDars::firstOrNew(['user_id' => $user->id, 'dars_id' => $item['dars_id']]);
+                $guestPlayedAt = isset($item['last_played_at']) ? Carbon::parse($item['last_played_at']) : null;
+
+                $entry->status ??= isset($item['status']) ? BookStatus::from($item['status']) : null;
+
+                if ($guestPlayedAt && (! $entry->last_played_at || $guestPlayedAt->gt($entry->last_played_at))) {
+                    $entry->fill([
+                        'position_seconds' => $item['position_seconds'] ?? $entry->position_seconds ?? 0,
+                        'progress' => $item['progress'] ?? $entry->progress ?? 0,
+                        'last_played_at' => $guestPlayedAt,
+                    ]);
+                }
+
+                $entry->save();
+                $counts['durus']++;
             }
 
             foreach ($request->input('annotations', []) as $item) {

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
-#[Fillable(['user_id', 'annotatable_type', 'annotatable_id', 'book_id', 'dars_id', 'lang', 'start_offset', 'end_offset', 'quote', 'color', 'note'])]
+#[Fillable(['user_id', 'annotatable_type', 'annotatable_id', 'book_id', 'dars_id', 'lang', 'start_offset', 'end_offset', 'quote', 'color', 'note', 'group_id'])]
 class Annotation extends Model
 {
     /**
@@ -29,6 +29,14 @@ class Annotation extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsTo<Book, $this>
+     */
+    public function book(): BelongsTo
+    {
+        return $this->belongsTo(Book::class);
     }
 
     /**
