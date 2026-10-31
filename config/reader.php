@@ -20,6 +20,7 @@ return [
             'noto-naskh-arabic' => ['family' => 'Noto Naskh Arabic', 'file' => 'NotoNaskhArabic-Regular.ttf', 'google' => 'Noto+Naskh+Arabic:wght@400;700'],
             'kfgqpc-uthmanic' => ['family' => 'KFGQPC Uthmanic Script', 'file' => 'KFGQPCUthmanicScriptHAFS.otf', 'google' => null],
             'scheherazade-new' => ['family' => 'Scheherazade New', 'file' => 'ScheherazadeNew-Regular.ttf', 'google' => 'Scheherazade+New:wght@400;700'],
+            'readex-pro' => ['family' => 'Readex Pro', 'file' => 'ReadexPro-Regular.ttf', 'google' => 'Readex+Pro:wght@400;700'],
         ],
         'bn' => [
             'noto-serif-bengali' => ['family' => 'Noto Serif Bengali', 'file' => 'NotoSerifBengali-Regular.ttf', 'google' => 'Noto+Serif+Bengali:wght@400;700'],
