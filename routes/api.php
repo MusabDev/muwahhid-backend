@@ -12,6 +12,7 @@ use App\Http\Controllers\DarsSeriesController;
 use App\Http\Controllers\Me;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SentenceController;
+use App\Http\Controllers\SeoController;
 use App\Http\Controllers\StatsController;
 use Illuminate\Support\Facades\Route;
 
@@ -65,10 +66,14 @@ Route::get('/sentences/{sentence}', [SentenceController::class, 'show'])->name('
 
 Route::get('/stats', StatsController::class)->name('stats');
 
+Route::get('/seo/sitemap', [SeoController::class, 'sitemap'])->name('seo.sitemap');
+Route::get('/seo/feed', [SeoController::class, 'feed'])->name('seo.feed');
+
 Route::get('/search', [SearchController::class, 'global'])->middleware('throttle:60,1')->name('search');
 
 Route::get('/dars-series', [DarsSeriesController::class, 'index'])->name('dars-series.index');
 Route::get('/dars-series/{darsSeries}', [DarsSeriesController::class, 'show'])->name('dars-series.show');
+Route::get('/dars-series/{darsSeries}/durus/{number}', [DarsController::class, 'showByNumber'])->whereNumber('number')->name('dars-series.durus.show');
 Route::get('/durus/{dars}', [DarsController::class, 'show'])->name('durus.show');
 
 Route::get('/reader/fonts', fn () => response()->json([

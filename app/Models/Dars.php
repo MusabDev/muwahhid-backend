@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MediaType;
+use App\Models\Concerns\RefreshesSeo;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['series_id', 'number', 'title_ar', 'title_bn', 'media_type', 'media_url', 'duration_seconds'])]
 class Dars extends Model
 {
+    use RefreshesSeo;
+
     protected $table = 'durus';
 
     /**
@@ -39,5 +42,17 @@ class Dars extends Model
     public function segments(): HasMany
     {
         return $this->hasMany(DarsSegment::class)->orderBy('position');
+    }
+
+    /**
+     * The dars and its series page (whose episode list changed), when the series is public.
+     *
+     * @return list<string>
+     */
+    public function seoPaths(): array
+    {
+        $series = $this->series;
+
+        return $series?->is_published ? ['/durus/'.$series->slug.'/'.$this->number, '/durus/'.$series->slug] : [];
     }
 }

@@ -1,2 +1,9 @@
+# api.muwahhid.net serves data for muwahhid.net; the pages themselves live there.
 User-agent: *
-Disallow:
+Disallow: /api/
+Disallow: /sanctum/
+# book covers and share cards are shown in search results and link previews
+Allow: /storage/
+Allow: /og/
+
+Sitemap: https://muwahhid.net/sitemap.xml

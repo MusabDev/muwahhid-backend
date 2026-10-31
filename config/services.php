@@ -35,6 +35,11 @@ return [
         ],
     ],
 
+    'indexnow' => [
+        'key' => env('INDEXNOW_KEY'),
+        'endpoint' => env('INDEXNOW_ENDPOINT', 'https://api.indexnow.org/indexnow'),
+    ],
+
     'gotenberg' => [
         'url' => env('GOTENBERG_URL', 'http://localhost:3000'),
         'timeout' => (int) env('GOTENBERG_TIMEOUT', 300),

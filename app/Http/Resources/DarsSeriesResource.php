@@ -34,6 +34,8 @@ class DarsSeriesResource extends JsonResource
             'author' => new AuthorResource($this->whenLoaded('author')),
             'book' => new BookResource($this->whenLoaded('book')),
             'durus' => DarsResource::collection($this->whenLoaded('durus')),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }

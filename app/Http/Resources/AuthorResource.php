@@ -32,6 +32,8 @@ class AuthorResource extends JsonResource
             'books' => BookResource::collection($this->whenLoaded('books')),
             'explained_books' => BookResource::collection($this->whenLoaded('explainedBooks')),
             'dars_series' => DarsSeriesResource::collection($this->whenLoaded('darsSeries')),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }

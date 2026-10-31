@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\NoIndex;
 use App\Http\Middleware\UnescapedJsonResponse;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -19,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->api(append: [
             UnescapedJsonResponse::class,
+            NoIndex::class,
         ]);
 
         $middleware->alias([

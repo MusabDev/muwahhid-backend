@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RefreshesSeo;
 use App\Support\ArabicNormalizer;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -12,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Hidden(['name_ar_normalized'])]
 class Author extends Model
 {
+    use RefreshesSeo;
+
     protected static function booted(): void
     {
         static::saving(function (Author $author) {
@@ -48,5 +51,13 @@ class Author extends Model
     public function darsSeries(): HasMany
     {
         return $this->hasMany(DarsSeries::class);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function seoPaths(): array
+    {
+        return ['/authors/'.$this->slug];
     }
 }

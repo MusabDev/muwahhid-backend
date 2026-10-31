@@ -180,17 +180,10 @@ class BookPdfRenderer
             $image = 'data:'.$disk->mimeType($book->cover_path).';base64,'.base64_encode($disk->get($book->cover_path));
         }
 
-        [$hue, $chroma, $lightness] = self::BINDINGS[$this->hashString($book->title_ar.$book->title_bn) % count(self::BINDINGS)];
-
         return [
             'image' => $image,
-            'background' => sprintf(
-                'linear-gradient(180deg, oklch(%s %s %s), oklch(%s %s %s))',
-                $lightness + 0.025, $chroma, $hue,
-                $lightness - 0.03, $chroma, $hue,
-            ),
-            'cloth' => sprintf('oklch(%s %s %s)', $lightness, $chroma, $hue),
-            'pattern' => 'data:image/svg+xml;base64,'.base64_encode($this->goldLattice()),
+            ...$this->cloth($book->title_ar.$book->title_bn),
+            'pattern' => $this->latticeUri(),
             'arabic_size' => match (true) {
                 mb_strlen($book->title_ar) <= 10 => '14cqw',
                 mb_strlen($book->title_ar) <= 18 => '11.5cqw',
@@ -203,6 +196,33 @@ class BookPdfRenderer
                 default => '5.8cqw',
             },
         ];
+    }
+
+    /**
+     * The cloth colour a title is bound in, picked by hash as on the web covers.
+     *
+     * @return array{background: string, cloth: string}
+     */
+    public function cloth(string $seed): array
+    {
+        [$hue, $chroma, $lightness] = self::BINDINGS[$this->hashString($seed) % count(self::BINDINGS)];
+
+        return [
+            'background' => sprintf(
+                'linear-gradient(180deg, oklch(%s %s %s), oklch(%s %s %s))',
+                $lightness + 0.025, $chroma, $hue,
+                $lightness - 0.03, $chroma, $hue,
+            ),
+            'cloth' => sprintf('oklch(%s %s %s)', $lightness, $chroma, $hue),
+        ];
+    }
+
+    /**
+     * The gold rosette lattice as a data URI image.
+     */
+    public function latticeUri(int $columns = 5, int $rows = 7): string
+    {
+        return 'data:image/svg+xml;base64,'.base64_encode($this->goldLattice($columns, $rows));
     }
 
     /**

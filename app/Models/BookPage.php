@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RefreshesSeo;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['book_id', 'number'])]
 class BookPage extends Model
 {
+    use RefreshesSeo;
+
     /**
      * @return array<string, string>
      */

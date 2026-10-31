@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RefreshesSeo;
 use App\Support\ArabicNormalizer;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -16,6 +17,8 @@ use Illuminate\Support\Facades\Storage;
 #[Hidden(['title_ar_normalized'])]
 class Book extends Model
 {
+    use RefreshesSeo;
+
     protected static function booted(): void
     {
         static::saving(function (Book $book) {
@@ -148,5 +151,15 @@ class Book extends Model
     public function darsSeries(): HasMany
     {
         return $this->hasMany(DarsSeries::class);
+    }
+
+    /**
+     * Public pages of a published book, for IndexNow.
+     *
+     * @return list<string>
+     */
+    public function seoPaths(): array
+    {
+        return $this->is_published ? ['/books/'.$this->slug] : [];
     }
 }

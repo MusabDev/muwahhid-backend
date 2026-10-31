@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RefreshesSeo;
 use App\Support\ArabicNormalizer;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -15,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Hidden(['title_ar_normalized'])]
 class DarsSeries extends Model
 {
+    use RefreshesSeo;
+
     protected $table = 'dars_series';
 
     protected static function booted(): void
@@ -111,5 +114,13 @@ class DarsSeries extends Model
     public function durus(): HasMany
     {
         return $this->hasMany(Dars::class, 'series_id')->orderBy('number');
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function seoPaths(): array
+    {
+        return $this->is_published ? ['/durus/'.$this->slug] : [];
     }
 }

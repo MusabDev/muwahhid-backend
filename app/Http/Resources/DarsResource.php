@@ -30,6 +30,8 @@ class DarsResource extends JsonResource
             'segments_count' => $this->whenCounted('segments'),
             'series' => new DarsSeriesResource($this->whenLoaded('series')),
             'segments' => DarsSegmentResource::collection($this->whenLoaded('segments')),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }

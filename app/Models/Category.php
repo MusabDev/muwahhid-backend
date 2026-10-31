@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RefreshesSeo;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['slug', 'name_bn', 'name_ar', 'position'])]
 class Category extends Model
 {
+    use RefreshesSeo;
+
     /**
      * @return array<string, string>
      */
