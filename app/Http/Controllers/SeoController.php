@@ -136,7 +136,6 @@ class SeoController extends Controller
                 'author' => ($book->is_sharh && $book->explainer ? $book->explainer : $book->author)?->name_bn,
                 'category' => $book->category?->name_bn,
                 'image' => $book->coverUrl(),
-                'og_key' => 'book/'.$book->slug,
                 'published_at' => $book->created_at?->toIso8601String(),
                 'updated_at' => $book->updated_at?->toIso8601String(),
             ]);
@@ -163,7 +162,6 @@ class SeoController extends Controller
                 'author' => $dars->series->author?->name_bn,
                 'category' => $dars->series->category?->name_bn,
                 'image' => null,
-                'og_key' => 'dars/'.$dars->series->slug.'-'.$dars->number,
                 'media' => $this->darsItem($dars),
                 'published_at' => $dars->created_at?->toIso8601String(),
                 'updated_at' => $dars->updated_at?->toIso8601String(),
