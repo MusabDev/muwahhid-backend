@@ -22,7 +22,9 @@ class UserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
-            'is_admin' => $this->is_admin,
+            'is_admin' => (bool) $this->is_admin,
+            'email_verified' => $this->hasVerifiedEmail(),
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

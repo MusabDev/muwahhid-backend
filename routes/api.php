@@ -24,11 +24,22 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('throttle:10,1')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->name('register');
     Route::post('/login', [AuthController::class, 'login'])->name('login');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
 });
+
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1')->name('password.email');
+
+Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
+    ->middleware(['signed:relative', 'throttle:6,1'])
+    ->whereNumber('id')
+    ->name('verification.verify');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/user', [AuthController::class, 'user'])->name('user');
+    Route::post('/email/verification-notification', [AuthController::class, 'resendVerification'])
+        ->middleware('throttle:3,1')
+        ->name('verification.send');
 });
 
 /*
@@ -72,6 +83,12 @@ Route::get('/reader/fonts', fn () => response()->json([
 */
 
 Route::middleware('auth:sanctum')->prefix('me')->name('me.')->group(function () {
+    Route::put('/profile', [Me\AccountController::class, 'updateProfile'])->middleware('throttle:10,1')->name('profile.update');
+    Route::put('/password', [Me\AccountController::class, 'updatePassword'])->middleware('throttle:6,1')->name('password.update');
+    Route::get('/sessions', [Me\AccountController::class, 'sessions'])->name('sessions.index');
+    Route::delete('/sessions/others', [Me\AccountController::class, 'destroyOtherSessions'])->middleware('throttle:6,1')->name('sessions.destroy-others');
+    Route::delete('/account', [Me\AccountController::class, 'destroy'])->middleware('throttle:6,1')->name('account.destroy');
+
     Route::get('/settings', [Me\SettingsController::class, 'show'])->name('settings.show');
     Route::put('/settings', [Me\SettingsController::class, 'update'])->name('settings.update');
 

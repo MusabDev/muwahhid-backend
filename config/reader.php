@@ -45,7 +45,6 @@ return [
         'disk' => 'local',
         'paper_width' => env('PDF_PAPER_WIDTH', '5.83in'),
         'paper_height' => env('PDF_PAPER_HEIGHT', '8.27in'),
-        'margin' => env('PDF_MARGIN', '0.6in'),
     ],
 
 ];
