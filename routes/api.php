@@ -137,6 +137,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->name('admin.')->g
     Route::apiResource('authors', Admin\AuthorController::class)->parameters(['authors' => 'author:id']);
 
     Route::post('/books/import', [Admin\BookController::class, 'importNew'])->name('books.import-new');
+    Route::post('/books/bulk', [Admin\BookController::class, 'bulk'])->name('books.bulk');
     Route::apiResource('books', Admin\BookController::class)->parameters(['books' => 'book:id']);
     Route::post('/books/{book:id}/cover', [Admin\BookController::class, 'uploadCover'])->name('books.cover.store');
     Route::delete('/books/{book:id}/cover', [Admin\BookController::class, 'deleteCover'])->name('books.cover.destroy');
@@ -160,10 +161,12 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->name('admin.')->g
     Route::delete('/footnotes/{footnote}', [Admin\BookFootnoteController::class, 'destroy'])->name('footnotes.destroy');
 
     Route::post('/dars-series/import', [Admin\DarsSeriesController::class, 'importNew'])->name('dars-series.import-new');
+    Route::post('/dars-series/bulk', [Admin\DarsSeriesController::class, 'bulk'])->name('dars-series.bulk');
     Route::apiResource('dars-series', Admin\DarsSeriesController::class)->parameters(['dars-series' => 'darsSeries:id']);
     Route::post('/dars-series/{darsSeries:id}/import', [Admin\DarsSeriesController::class, 'import'])->name('dars-series.import');
     Route::get('/dars-series/{darsSeries:id}/export', [Admin\DarsSeriesController::class, 'export'])->name('dars-series.export');
     Route::post('/dars-series/{darsSeries:id}/durus', [Admin\DarsController::class, 'store'])->name('durus.store');
+    Route::post('/dars-series/{darsSeries:id}/durus/bulk', [Admin\DarsController::class, 'bulk'])->name('durus.bulk');
     Route::get('/durus/{dars}', [Admin\DarsController::class, 'show'])->name('durus.show');
     Route::put('/durus/{dars}', [Admin\DarsController::class, 'update'])->name('durus.update');
     Route::delete('/durus/{dars}', [Admin\DarsController::class, 'destroy'])->name('durus.destroy');

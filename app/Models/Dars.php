@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['series_id', 'number', 'title_ar', 'title_bn', 'media_type', 'media_url', 'duration_seconds'])]
+#[Fillable(['series_id', 'number', 'title_ar', 'title_bn', 'media_type', 'media_url', 'duration_seconds', 'subtitle_style', 'subtitle_mode'])]
 class Dars extends Model
 {
     use RefreshesSeo;
@@ -25,6 +25,7 @@ class Dars extends Model
             'media_type' => MediaType::class,
             'number' => 'integer',
             'duration_seconds' => 'integer',
+            'subtitle_style' => 'array',
         ];
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\ReadsImportFile;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\BulkRequest;
 use App\Http\Requests\Admin\DarsSeriesRequest;
 use App\Http\Resources\DarsSeriesResource;
 use App\Models\DarsSeries;
@@ -12,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 
 class DarsSeriesController extends Controller
 {
@@ -57,6 +59,24 @@ class DarsSeriesController extends Controller
         $darsSeries->delete();
 
         return response()->noContent();
+    }
+
+    /**
+     * Publish, unpublish, recategorize, reassign or delete several series (with their durus) at once.
+     */
+    public function bulk(BulkRequest $request): JsonResponse
+    {
+        $series = DarsSeries::whereIn('id', $request->validated('ids'))->get();
+
+        DB::transaction(fn () => $series->each(fn (DarsSeries $item) => match ($request->validated('action')) {
+            'publish' => $item->update(['is_published' => true]),
+            'unpublish' => $item->update(['is_published' => false]),
+            'category' => $item->update(['category_id' => $request->validated('category_id')]),
+            'author' => $item->update(['author_id' => $request->validated('author_id')]),
+            'delete' => $item->delete(),
+        }));
+
+        return response()->json(['affected' => $series->count()]);
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Admin\Concerns\ReadsImportFile;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\BookRequest;
+use App\Http\Requests\Admin\BulkRequest;
 use App\Http\Resources\BookResource;
 use App\Models\Book;
 use App\Services\BookImporter;
@@ -12,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class BookController extends Controller
@@ -64,14 +66,39 @@ class BookController extends Controller
 
     public function destroy(Book $book): Response
     {
+        $this->deleteBook($book);
+
+        return response()->noContent();
+    }
+
+    /**
+     * Publish, unpublish, recategorize, reassign or delete several books at once.
+     * Each book is changed through its model, so its events (SEO refresh, content version) still run.
+     */
+    public function bulk(BulkRequest $request): JsonResponse
+    {
+        $books = Book::whereIn('id', $request->validated('ids'))->get();
+
+        DB::transaction(fn () => $books->each(fn (Book $book) => match ($request->validated('action')) {
+            'publish' => $book->update(['is_published' => true]),
+            'unpublish' => $book->update(['is_published' => false]),
+            'category' => $book->update(['category_id' => $request->validated('category_id')]),
+            // the author is part of the page text and the PDF, so a change makes them stale
+            'author' => tap($book)->update(['author_id' => $request->validated('author_id')])->bumpContentVersion(),
+            'delete' => $this->deleteBook($book),
+        }));
+
+        return response()->json(['affected' => $books->count()]);
+    }
+
+    private function deleteBook(Book $book): void
+    {
         if ($book->cover_path) {
             Storage::disk('public')->delete($book->cover_path);
         }
 
         $book->exports->each(fn ($export) => $export->file_path && Storage::disk(config('reader.pdf.disk'))->delete($export->file_path));
         $book->delete();
-
-        return response()->noContent();
     }
 
     public function uploadCover(Request $request, Book $book): BookResource

@@ -27,6 +27,8 @@ class DarsResource extends JsonResource
             'media_type' => $this->media_type,
             'media_url' => $this->media_url,
             'duration_seconds' => $this->duration_seconds,
+            'subtitle_style' => $this->subtitle_style,
+            'subtitle_mode' => $this->subtitle_mode,
             'segments_count' => $this->whenCounted('segments'),
             'series' => new DarsSeriesResource($this->whenLoaded('series')),
             'segments' => DarsSegmentResource::collection($this->whenLoaded('segments')),

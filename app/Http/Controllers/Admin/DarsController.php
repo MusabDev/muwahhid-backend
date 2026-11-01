@@ -12,6 +12,7 @@ use App\Services\TranscriptImporter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -39,6 +40,23 @@ class DarsController extends Controller
         $dars->delete();
 
         return response()->noContent();
+    }
+
+    /**
+     * Delete several durus of one series at once.
+     */
+    public function bulk(Request $request, DarsSeries $darsSeries): JsonResponse
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:500'],
+            'ids.*' => ['integer', 'distinct'],
+            'action' => ['required', Rule::in(['delete'])],
+        ]);
+
+        $durus = $darsSeries->durus()->whereIn('id', $data['ids'])->get();
+        DB::transaction(fn () => $durus->each->delete());
+
+        return response()->json(['affected' => $durus->count()]);
     }
 
     /**
