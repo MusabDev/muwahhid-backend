@@ -81,10 +81,12 @@ a { color: inherit; text-decoration: none; }
 .colophon-about { margin-top: .28in; max-width: 3.6in; padding: .14in .2in; border-block: 1px solid color-mix(in oklch, var(--page-accent) 30%, transparent); font-size: 9pt; line-height: 1.75; color: color-mix(in oklch, var(--page-ink) 80%, transparent); }
 .colophon-about p + p { margin-top: .4em; }
 .colophon-brand { display: flex; flex-direction: column; align-items: center; gap: .08in; }
-.brand { display: flex; align-items: center; gap: .09in; color: var(--page-ink); }
-.brand-mark { width: .3in; height: .3in; color: var(--gold); }
+.brand { display: flex; align-items: center; gap: .12in; color: var(--page-ink); direction: ltr; }
+.brand-mark { height: .36in; width: auto; color: var(--gold); }
+.brand-rule { width: 1px; height: .32in; background: currentColor; opacity: .3; }
+.brand-names { display: flex; flex-direction: column; line-height: 1; }
 .brand-name { font-family: 'Noto Serif Bengali', serif; font-size: 13pt; font-weight: 700; letter-spacing: .02em; }
-.colophon.ar .brand-name { font-family: 'Amiri', serif; font-size: 16pt; }
+.brand-latin { margin-top: .05in; font-family: 'Noto Serif Bengali', serif; font-size: 6.5pt; font-weight: 600; letter-spacing: .3em; text-transform: uppercase; opacity: .6; }
 .colophon-link { display: flex; flex-direction: column; align-items: center; gap: .02in; margin-top: .04in; padding: .07in .2in; border: 1px solid color-mix(in oklch, var(--page-accent) 45%, transparent); border-radius: 3px; background: var(--page-hover); font-size: 8.5pt; color: var(--page-muted); }
 .colophon.ar .colophon-link { font-size: 10pt; }
 .colophon-url { font-family: 'Noto Serif Bengali', serif; font-size: 8.5pt; font-weight: 600; color: var(--page-accent); text-decoration: underline; text-underline-offset: 2px; }

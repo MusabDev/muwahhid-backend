@@ -10,11 +10,185 @@ use App\Models\BookFootnote;
 use App\Models\BookPage;
 use App\Models\BookSentence;
 use App\Models\TocEntry;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class BookImporter
 {
+    public const FORMAT = 'muwahhid.book/v1';
+
+    /**
+     * Validation rules for a book file. With $withMeta the "book" block is required.
+     *
+     * @return array<string, mixed>
+     */
+    public static function rules(bool $withMeta): array
+    {
+        $meta = $withMeta ? [
+            'book' => ['required', 'array'],
+            'book.title_ar' => ['required', 'string', 'max:255'],
+            'book.title_bn' => ['required', 'string', 'max:255'],
+            'book.title_translit' => ['required', 'string', 'max:255'],
+            'book.slug' => ['nullable', 'string', 'max:255', 'alpha_dash'],
+            'book.about_md' => ['nullable', 'string'],
+            'book.is_published' => ['sometimes', 'boolean'],
+            ...ReferenceResolver::authorRules('book.author'),
+            ...ReferenceResolver::authorRules('book.explainer', required: false),
+            ...ReferenceResolver::categoryRules('book.category'),
+        ] : [];
+
+        return [
+            ...$meta,
+            'pages' => [$withMeta ? 'sometimes' : 'required_without:toc', 'array'],
+            'pages.*.number' => ['sometimes', 'integer', 'min:0'],
+            'pages.*.sentences' => ['sometimes', 'array'],
+            'pages.*.sentences.*.ar' => ['present', 'nullable', 'string'],
+            'pages.*.sentences.*.bn' => ['present', 'nullable', 'string'],
+            'pages.*.sentences.*.block_type' => ['nullable', Rule::enum(BlockType::class)],
+            'pages.*.sentences.*.paragraph_break' => ['sometimes', 'boolean'],
+            'pages.*.footnotes' => ['sometimes', 'array'],
+            'pages.*.footnotes.ar.*.marker' => ['required', 'max:20'],
+            'pages.*.footnotes.ar.*.text' => ['required', 'string'],
+            'pages.*.footnotes.bn.*.marker' => ['required', 'max:20'],
+            'pages.*.footnotes.bn.*.text' => ['required', 'string'],
+            'toc' => ['sometimes', 'array'],
+            'toc.*.title_ar' => ['required', 'string', 'max:255'],
+            'toc.*.title_bn' => ['required', 'string', 'max:255'],
+            'toc.*.page' => ['required_without:toc.*.page_number', 'integer', 'min:0'],
+            'toc.*.children' => ['sometimes', 'array'],
+        ];
+    }
+
+    /**
+     * Count what a book file holds, without writing anything.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{pages: int, sentences: int, footnotes: int, toc_entries: int}
+     */
+    public static function count(array $data): array
+    {
+        $pages = $data['pages'] ?? [];
+
+        return [
+            'pages' => count($pages),
+            'sentences' => array_sum(array_map(fn ($page) => count($page['sentences'] ?? []), $pages)),
+            'footnotes' => array_sum(array_map(fn ($page) => count($page['footnotes']['ar'] ?? []) + count($page['footnotes']['bn'] ?? []), $pages)),
+            'toc_entries' => self::countToc($data['toc'] ?? []),
+        ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $entries
+     */
+    private static function countToc(array $entries): int
+    {
+        return array_sum(array_map(fn (array $entry) => 1 + self::countToc($entry['children'] ?? []), $entries));
+    }
+
+    /**
+     * Create a new book (and any missing author / category) from a full book file.
+     * In dry-run mode only the summary is returned.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{book: ?Book, imported: array{pages: int, sentences: int, footnotes: int, toc_entries: int}, will_create: array{authors: list<string>, categories: list<string>}}
+     */
+    public function createFromJson(array $data, bool $dryRun = false): array
+    {
+        $meta = $data['book'];
+        $slug = $meta['slug'] ?? Str::slug($meta['title_translit']);
+
+        if (Book::where('slug', $slug)->exists()) {
+            throw ValidationException::withMessages(['book.slug' => "A book with slug \"{$slug}\" already exists. Import into that book instead, or set a different slug."]);
+        }
+
+        $refs = new ReferenceResolver($dryRun);
+
+        $run = function () use ($data, $meta, $slug, $refs, $dryRun) {
+            $author = $refs->author($meta['author'], 'book.author');
+            $explainer = $refs->author($meta['explainer'] ?? null, 'book.explainer');
+            $category = $refs->category($meta['category'] ?? null, 'book.category');
+
+            if ($dryRun) {
+                return ['book' => null, 'imported' => self::count($data), 'will_create' => $refs->created];
+            }
+
+            $book = Book::create([
+                'slug' => $slug,
+                'title_ar' => $meta['title_ar'],
+                'title_bn' => $meta['title_bn'],
+                'title_translit' => $meta['title_translit'],
+                'about_md' => $meta['about_md'] ?? null,
+                'is_published' => (bool) ($meta['is_published'] ?? false),
+                'author_id' => $author->id,
+                'is_sharh' => $explainer !== null,
+                'explainer_id' => $explainer?->id,
+                'category_id' => $category?->id,
+            ]);
+
+            return ['book' => $book, 'imported' => $this->importJson($book, $data), 'will_create' => $refs->created];
+        };
+
+        return $dryRun ? $run() : DB::transaction($run);
+    }
+
+    /**
+     * The book in the import file format, so it can be edited and imported again.
+     *
+     * @return array<string, mixed>
+     */
+    public function export(Book $book): array
+    {
+        $book->load(['author', 'explainer', 'category', 'pages.sentences', 'pages.footnotes', 'tocEntries' => fn ($query) => $query->whereNull('parent_id')->with('children.children.children')]);
+
+        $author = fn ($author) => $author ? ['slug' => $author->slug, 'name_ar' => $author->name_ar, 'name_bn' => $author->name_bn, 'name_translit' => $author->name_translit] : null;
+
+        return [
+            'format' => self::FORMAT,
+            'book' => [
+                'title_ar' => $book->title_ar,
+                'title_bn' => $book->title_bn,
+                'title_translit' => $book->title_translit,
+                'slug' => $book->slug,
+                'about_md' => $book->about_md,
+                'is_published' => $book->is_published,
+                'author' => $author($book->author),
+                'explainer' => $book->is_sharh ? $author($book->explainer) : null,
+                'category' => $book->category ? ['slug' => $book->category->slug, 'name_bn' => $book->category->name_bn, 'name_ar' => $book->category->name_ar] : null,
+            ],
+            'pages' => $book->pages->sortBy('number')->values()->map(fn (BookPage $page) => [
+                'number' => $page->number,
+                'sentences' => $page->sentences->sortBy('position')->values()->map(fn (BookSentence $sentence) => [
+                    'ar' => $sentence->text_ar_md,
+                    'bn' => $sentence->text_bn_md,
+                    'block_type' => $sentence->block_type->value,
+                    'paragraph_break' => $sentence->paragraph_break,
+                ])->all(),
+                'footnotes' => collect(['ar', 'bn'])->mapWithKeys(fn ($lang) => [
+                    $lang => $page->footnotes->filter(fn (BookFootnote $footnote) => $footnote->lang->value === $lang)
+                        ->map(fn (BookFootnote $footnote) => ['marker' => $footnote->marker, 'text' => $footnote->text_md])->values()->all(),
+                ])->all(),
+            ])->all(),
+            'toc' => $this->exportToc($book->tocEntries),
+        ];
+    }
+
+    /**
+     * @param  Collection<int, TocEntry>  $entries
+     * @return list<array<string, mixed>>
+     */
+    private function exportToc(Collection $entries): array
+    {
+        return $entries->map(fn (TocEntry $entry) => [
+            'title_ar' => $entry->title_ar,
+            'title_bn' => $entry->title_bn,
+            'page' => $entry->page_number,
+            ...($entry->relationLoaded('children') && $entry->children->isNotEmpty() ? ['children' => $this->exportToc($entry->children)] : []),
+        ])->values()->all();
+    }
+
     /**
      * Import book content from the JSON format:
      *

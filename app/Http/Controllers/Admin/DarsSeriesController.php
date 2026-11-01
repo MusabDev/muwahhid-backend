@@ -2,22 +2,29 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\ReadsImportFile;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DarsSeriesRequest;
 use App\Http\Resources\DarsSeriesResource;
 use App\Models\DarsSeries;
+use App\Services\SeriesImporter;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
 class DarsSeriesController extends Controller
 {
+    use ReadsImportFile;
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $series = DarsSeries::query()
             ->with(['author', 'category'])
             ->withCount('durus')
             ->when($request->filled('author_id'), fn ($query) => $query->where('author_id', $request->integer('author_id')))
+            ->when($request->filled('category_id'), fn ($query) => $query->where('category_id', $request->integer('category_id')))
+            ->when($request->filled('is_published'), fn ($query) => $query->where('is_published', $request->boolean('is_published')))
             ->when($request->filled('q'), fn ($query) => $query->whereRaw(
                 "(title_ar || ' ' || title_bn || ' ' || title_translit) ILIKE ?",
                 ['%'.$request->string('q').'%'],
@@ -50,5 +57,40 @@ class DarsSeriesController extends Controller
         $darsSeries->delete();
 
         return response()->noContent();
+    }
+
+    /**
+     * Create a new series with its durus and transcripts from a series file.
+     * With dry_run=1 nothing is written and only a summary is returned.
+     */
+    public function importNew(Request $request, SeriesImporter $importer): JsonResponse
+    {
+        $data = $this->readImportFile($request, SeriesImporter::FORMAT, SeriesImporter::rules(withMeta: true));
+        $result = $importer->createFromJson($data, $request->boolean('dry_run'));
+
+        return response()->json([
+            'series' => $result['series'] ? new DarsSeriesResource($result['series']) : null,
+            'imported' => $result['imported'],
+            'will_create' => $result['will_create'],
+        ]);
+    }
+
+    /**
+     * Add or update durus (matched by number) in this series from a series file.
+     * Its "series" block is ignored.
+     */
+    public function import(Request $request, DarsSeries $darsSeries, SeriesImporter $importer): JsonResponse
+    {
+        $data = $this->readImportFile($request, SeriesImporter::FORMAT, SeriesImporter::rules(withMeta: false));
+
+        return response()->json($importer->importInto($darsSeries, $data, $request->boolean('dry_run')));
+    }
+
+    /**
+     * The series in the import file format.
+     */
+    public function export(DarsSeries $darsSeries, SeriesImporter $importer): JsonResponse
+    {
+        return response()->json($importer->export($darsSeries), options: JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     }
 }

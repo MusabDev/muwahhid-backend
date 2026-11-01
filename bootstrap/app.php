@@ -18,6 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
 
+        // The page-view beacon is sent without a CSRF token (first-time guests have none)
+        $middleware->validateCsrfTokens(except: ['api/analytics/*']);
+
         $middleware->api(append: [
             UnescapedJsonResponse::class,
             NoIndex::class,

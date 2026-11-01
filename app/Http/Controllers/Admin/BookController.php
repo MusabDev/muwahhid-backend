@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\ReadsImportFile;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\BookRequest;
 use App\Http\Resources\BookResource;
@@ -12,16 +13,19 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\ValidationException;
 
 class BookController extends Controller
 {
+    use ReadsImportFile;
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $books = Book::query()
             ->with(['author', 'explainer', 'category'])
             ->withCount('pages')
             ->when($request->filled('author_id'), fn ($query) => $query->where('author_id', $request->integer('author_id')))
+            ->when($request->filled('category_id'), fn ($query) => $query->where('category_id', $request->integer('category_id')))
+            ->when($request->filled('is_published'), fn ($query) => $query->where('is_published', $request->boolean('is_published')))
             ->when($request->filled('q'), fn ($query) => $query->whereRaw(
                 "(title_ar || ' ' || title_bn || ' ' || title_translit) ILIKE ?",
                 ['%'.$request->string('q').'%'],
@@ -94,36 +98,58 @@ class BookController extends Controller
     }
 
     /**
-     * Bulk-import pages, sentences, footnotes and TOC from a JSON or CSV file
-     * (or a JSON body). With replace=true, existing content is removed first.
+     * Create a new book, with its content, from a full book file. With dry_run=1 nothing
+     * is written and only a summary is returned.
+     */
+    public function importNew(Request $request, BookImporter $importer): JsonResponse
+    {
+        $data = $this->readImportFile($request, BookImporter::FORMAT, BookImporter::rules(withMeta: true));
+        $result = $importer->createFromJson($data, $request->boolean('dry_run'));
+
+        return response()->json([
+            'book' => $result['book'] ? new BookResource($result['book']->load(['author', 'category'])) : null,
+            'imported' => $result['imported'],
+            'will_create' => $result['will_create'],
+        ]);
+    }
+
+    /**
+     * Bulk-import pages, sentences, footnotes and TOC into this book from a JSON or CSV
+     * file (or a JSON body). A full book file works too; its "book" block is ignored.
+     * With replace=true, existing content is removed first; with dry_run=1 nothing is written.
      */
     public function import(Request $request, Book $book, BookImporter $importer): JsonResponse
     {
-        $request->validate([
-            'file' => ['required_without:pages', 'file', 'mimes:json,csv,txt', 'max:51200'],
-            'pages' => ['required_without:file', 'array'],
-            'replace' => ['sometimes', 'boolean'],
-        ]);
+        $request->validate(['replace' => ['sometimes', 'boolean'], 'dry_run' => ['sometimes', 'boolean']]);
 
         $replace = $request->boolean('replace');
-
-        if (! $request->hasFile('file')) {
-            return response()->json(['imported' => $importer->importJson($book, $request->only(['pages', 'toc']), $replace)]);
-        }
-
         $file = $request->file('file');
 
-        if (strtolower($file->getClientOriginalExtension()) === 'csv') {
+        if ($file && strtolower($file->getClientOriginalExtension()) === 'csv') {
+            $request->validate(['file' => ['file', 'max:51200']]);
+
+            if ($request->boolean('dry_run')) {
+                return response()->json(['imported' => null]);
+            }
+
             return response()->json(['imported' => $importer->importCsv($book, $file->getRealPath(), $replace)]);
         }
 
-        $data = json_decode(file_get_contents($file->getRealPath()), true);
+        $data = $this->readImportFile($request, BookImporter::FORMAT, BookImporter::rules(withMeta: false));
 
-        if (! is_array($data)) {
-            throw ValidationException::withMessages(['file' => 'The file is not valid JSON.']);
+        if ($request->boolean('dry_run')) {
+            return response()->json(['imported' => BookImporter::count($data), 'existing_pages' => $book->pages()->count()]);
         }
 
         return response()->json(['imported' => $importer->importJson($book, $data, $replace)]);
+    }
+
+    /**
+     * The book in the import file format.
+     */
+    public function export(Book $book, BookImporter $importer): JsonResponse
+    {
+        return response()->json($importer->export($book), options: JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     }
 
     /**

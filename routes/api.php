@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin;
+use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AuthorController;
 use App\Http\Controllers\BookController;
@@ -66,6 +67,11 @@ Route::get('/sentences/{sentence}', [SentenceController::class, 'show'])->name('
 
 Route::get('/stats', StatsController::class)->name('stats');
 
+Route::middleware('throttle:120,1')->prefix('analytics')->name('analytics.')->group(function () {
+    Route::post('/collect', [AnalyticsController::class, 'collect'])->name('collect');
+    Route::post('/engage', [AnalyticsController::class, 'engage'])->name('engage');
+});
+
 Route::get('/seo/sitemap', [SeoController::class, 'sitemap'])->name('seo.sitemap');
 Route::get('/seo/feed', [SeoController::class, 'feed'])->name('seo.feed');
 
@@ -123,14 +129,19 @@ Route::middleware('auth:sanctum')->prefix('me')->name('me.')->group(function () 
 */
 
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/analytics', [Admin\AnalyticsController::class, 'index'])->name('analytics.index');
+    Route::get('/analytics/realtime', [Admin\AnalyticsController::class, 'realtime'])->name('analytics.realtime');
+
     Route::apiResource('categories', Admin\CategoryController::class)->except('show')->parameters(['categories' => 'category:id']);
 
     Route::apiResource('authors', Admin\AuthorController::class)->parameters(['authors' => 'author:id']);
 
+    Route::post('/books/import', [Admin\BookController::class, 'importNew'])->name('books.import-new');
     Route::apiResource('books', Admin\BookController::class)->parameters(['books' => 'book:id']);
     Route::post('/books/{book:id}/cover', [Admin\BookController::class, 'uploadCover'])->name('books.cover.store');
     Route::delete('/books/{book:id}/cover', [Admin\BookController::class, 'deleteCover'])->name('books.cover.destroy');
     Route::post('/books/{book:id}/import', [Admin\BookController::class, 'import'])->name('books.import');
+    Route::get('/books/{book:id}/export', [Admin\BookController::class, 'export'])->name('books.export');
     Route::put('/books/{book:id}/toc', [Admin\BookController::class, 'updateToc'])->name('books.toc');
 
     Route::get('/books/{book:id}/pages', [Admin\BookPageController::class, 'index'])->name('pages.index');
@@ -148,7 +159,10 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->name('admin.')->g
     Route::put('/footnotes/{footnote}', [Admin\BookFootnoteController::class, 'update'])->name('footnotes.update');
     Route::delete('/footnotes/{footnote}', [Admin\BookFootnoteController::class, 'destroy'])->name('footnotes.destroy');
 
+    Route::post('/dars-series/import', [Admin\DarsSeriesController::class, 'importNew'])->name('dars-series.import-new');
     Route::apiResource('dars-series', Admin\DarsSeriesController::class)->parameters(['dars-series' => 'darsSeries:id']);
+    Route::post('/dars-series/{darsSeries:id}/import', [Admin\DarsSeriesController::class, 'import'])->name('dars-series.import');
+    Route::get('/dars-series/{darsSeries:id}/export', [Admin\DarsSeriesController::class, 'export'])->name('dars-series.export');
     Route::post('/dars-series/{darsSeries:id}/durus', [Admin\DarsController::class, 'store'])->name('durus.store');
     Route::get('/durus/{dars}', [Admin\DarsController::class, 'show'])->name('durus.show');
     Route::put('/durus/{dars}', [Admin\DarsController::class, 'update'])->name('durus.update');

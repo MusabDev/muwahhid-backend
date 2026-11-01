@@ -44,15 +44,13 @@
 
     <footer class="colophon-brand">
         <div class="brand">
-            {{-- StarMark from the web app's brand.tsx --}}
-            <svg viewBox="0 0 40 40" class="brand-mark" aria-hidden="true">
-                <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">
-                    <path d="M20 3 25 15 37 20 25 25 20 37 15 25 3 20 15 15Z" />
-                    <path d="M8 8 20 13 32 8 27 20 32 32 20 27 8 32 13 20Z" />
-                </g>
-                <circle cx="20" cy="20" r="3.2" fill="currentColor" />
-            </svg>
-            <span class="brand-name">{{ $isArabic ? 'الموحِّد' : 'আল-মুওয়াহহিদ' }}</span>
+            {{-- the web app's navbar lockup: wordmark | Bangla name over the English one --}}
+            @include('exports.wordmark', ['class' => 'brand-mark'])
+            <span class="brand-rule"></span>
+            <span class="brand-names">
+                <span class="brand-name">আল-মুওয়াহহিদ</span>
+                <span class="brand-latin">Al-Muwahhid</span>
+            </span>
         </div>
         <a class="colophon-link" href="{{ $bookUrl }}">
             <span>{{ $labels['read'] }}</span>
