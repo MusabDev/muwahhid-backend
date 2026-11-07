@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Lang;
 use App\Http\Resources\BookPageResource;
 use App\Models\Book;
 use Illuminate\Http\JsonResponse;
@@ -18,12 +19,25 @@ class BookPageController extends Controller
             ->with(['sentences', 'footnotes'])
             ->firstOrFail();
 
+        $nextNumber = $book->pages()->where('number', '>', $number)->min('number');
+        $next = $nextNumber === null ? null : $book->pages()
+            ->where('number', $nextNumber)
+            ->with(['sentences' => fn ($query) => $query->limit(1)])
+            ->first();
+
+        $continues = $page->continuesInto($next);
+
         return response()->json([
             ...(new BookPageResource($page))->resolve($request),
             'book_id' => $book->id,
             'content_version' => $book->content_version,
             'prev_page' => $book->pages()->where('number', '<', $number)->max('number'),
-            'next_page' => $book->pages()->where('number', '>', $number)->min('number'),
+            'next_page' => $nextNumber,
+            'continues' => $continues,
+            'ends_mid' => [
+                'ar' => $continues && $page->endsMidSentence(Lang::Arabic),
+                'bn' => $continues && $page->endsMidSentence(Lang::Bangla),
+            ],
         ]);
     }
 }

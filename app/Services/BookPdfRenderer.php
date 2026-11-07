@@ -7,6 +7,7 @@ use App\Enums\ExportVariant;
 use App\Enums\Lang;
 use App\Models\Book;
 use App\Models\BookFootnote;
+use App\Models\BookPage;
 use App\Models\BookSentence;
 use App\Support\MarkdownText;
 use Illuminate\Support\Collection;
@@ -53,13 +54,20 @@ class BookPdfRenderer
             'fontCss' => $this->fontCss($arabicFont, $banglaFont),
             'cover' => $this->cover($book),
             'bookUrl' => config('app.frontend_url').'/books/'.$book->slug,
-            'pages' => $book->pages->map(fn ($page) => [
-                'number' => $page->number,
-                'ar' => $this->blocks($page->sentences, Lang::Arabic),
-                'bn' => $this->blocks($page->sentences, Lang::Bangla),
-                'footnotes_ar' => $this->footnotes($page->footnotes->where('lang', Lang::Arabic), Lang::Arabic),
-                'footnotes_bn' => $this->footnotes($page->footnotes->where('lang', Lang::Bangla), Lang::Bangla),
-            ]),
+            'pages' => $book->pages->values()->map(function (BookPage $page, int $index) use ($book): array {
+                $continues = $page->continuesInto($book->pages->values()->get($index + 1));
+
+                return [
+                    'number' => $page->number,
+                    'continues' => $continues,
+                    'ends_mid_ar' => $continues && $page->endsMidSentence(Lang::Arabic),
+                    'ends_mid_bn' => $continues && $page->endsMidSentence(Lang::Bangla),
+                    'ar' => $this->blocks($page->sentences, Lang::Arabic),
+                    'bn' => $this->blocks($page->sentences, Lang::Bangla),
+                    'footnotes_ar' => $this->footnotes($page->footnotes->where('lang', Lang::Arabic), Lang::Arabic),
+                    'footnotes_bn' => $this->footnotes($page->footnotes->where('lang', Lang::Bangla), Lang::Bangla),
+                ];
+            }),
         ])->render();
 
         $config = config('reader.pdf');

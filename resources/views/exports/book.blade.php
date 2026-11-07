@@ -131,17 +131,25 @@ a { color: inherit; text-decoration: none; }
 .ar .page-tab span { font-family: var(--font-ar); font-size: 10.5pt; }
 
 .text { flex: 1 0 auto; }
-.text.bn { font-family: var(--font-bn); font-size: calc(var(--text-bn) * var(--fit)); line-height: 1.8; text-align: justify; }
-.text.ar { font-family: var(--font-ar); font-size: calc(var(--text-ar) * var(--fit)); line-height: 2; text-align: justify; direction: rtl; }
-.text p { margin-bottom: .5em; }
+.text.bn { font-family: var(--font-bn); font-size: calc(var(--text-bn) * var(--fit)); line-height: calc(1.8 * var(--lead, 1)); text-align: justify; }
+.text.ar { font-family: var(--font-ar); font-size: calc(var(--text-ar) * var(--fit)); line-height: calc(2 * var(--lead, 1)); text-align: justify; direction: rtl; }
+/*
+ * A sheet that has to reach its foot sets --gap and --lead (fill() below): every gap between two
+ * blocks grows by --gap (margins collapse, so it's added to both sides), never the outer edges.
+ */
+.text > :first-child { --gap-t: 0px; }
+.text > :last-child { --gap-b: 0px; }
+.text p { margin-bottom: calc(.5em + var(--gap-b, var(--gap, 0px))); }
 .text p:last-child { margin-bottom: 0; }
-.text h3 { margin: .9em 0; text-align: center; font-size: 1.2em; line-height: 1.375; font-weight: 700; }
+/* a page that ends mid-paragraph: its last line is a full line, like any other in the paragraph */
+.text.ends-mid > :last-child { text-align-last: justify; }
+.text h3 { margin: calc(.9em + var(--gap-t, var(--gap, 0px))) 0 calc(.9em + var(--gap-b, var(--gap, 0px))); text-align: center; font-size: 1.2em; line-height: 1.375; font-weight: 700; }
 .text.ar h3 { font-size: 1.25em; }
 .text h3:first-child { margin-top: .2em; }
-.text blockquote { margin: .7em 0; padding-inline-start: 1em; border-inline-start: 3px solid color-mix(in oklch, var(--page-accent) 50%, transparent); }
-.text .li { position: relative; margin: .35em 0; padding-inline-start: 1.5em; }
+.text blockquote { margin: calc(.7em + var(--gap-t, var(--gap, 0px))) 0 calc(.7em + var(--gap-b, var(--gap, 0px))); padding-inline-start: 1em; border-inline-start: 3px solid color-mix(in oklch, var(--page-accent) 50%, transparent); }
+.text .li { position: relative; margin: calc(.35em + var(--gap-t, var(--gap, 0px))) 0 calc(.35em + var(--gap-b, var(--gap, 0px))); padding-inline-start: 1.5em; }
 .text .li::before { content: '◆'; position: absolute; inset-inline-start: .25em; top: 0; font-size: .7em; line-height: inherit; color: var(--page-ink); }
-.text .poetry { margin: .25em 0; text-align: center; font-style: italic; }
+.text .poetry { margin: calc(.25em + var(--gap-t, var(--gap, 0px))) 0 calc(.25em + var(--gap-b, var(--gap, 0px))); text-align: center; font-style: italic; }
 .text strong { font-weight: 700; }
 .fn-ref { font-size: .68em; vertical-align: super; line-height: 0; color: var(--page-accent); font-weight: 600; padding: 0 .15em; }
 
@@ -180,7 +188,7 @@ a { color: inherit; text-decoration: none; }
     <div class="page-group">
     @foreach ($languages as $lang)
         @php($isArabic = $lang === Lang::Arabic)
-        <section class="sheet page {{ $lang->value }}" lang="{{ $lang->value }}" dir="{{ $isArabic ? 'rtl' : 'ltr' }}" id="p-{{ $page['number'] }}-{{ $lang->value }}">
+        <section class="sheet page {{ $lang->value }}" lang="{{ $lang->value }}" dir="{{ $isArabic ? 'rtl' : 'ltr' }}" id="p-{{ $page['number'] }}-{{ $lang->value }}" @if ($page['continues']) data-continues @endif @if ($page['ends_mid_'.$lang->value]) data-ends-mid @endif>
             {{-- running head: title at the reading start, page number in a bookmark tab hanging from the top edge --}}
             <header class="running-head">
                 <span class="running-title">{{ $isArabic ? $book->title_ar : $book->title_bn }}</span>
@@ -237,13 +245,19 @@ a { color: inherit; text-decoration: none; }
  * 2. fit each book page on its sheet, shrinking the type a little first and
  *    carrying trailing blocks onto a continuation sheet only as a last resort,
  *    so footnotes always sit at the foot of a page;
- * 3. in bilingual exports, interleave the Bangla and Arabic sheets and pad with
+ * 3. fill each sheet of a page but its last, and the last too when the page
+ *    ends mid-paragraph, so the text reaches the foot like a printed book's;
+ * 4. in bilingual exports, interleave the Bangla and Arabic sheets and pad with
  *    a blank page so Bangla is always the left page and Arabic the right, like
  *    an opened bilingual book (and like the web reader).
  */
 (async () => {
     const BILINGUAL = @json($variant === ExportVariant::Bilingual);
     const MIN_FIT = 0.86;
+    // keep in step with book-view.tsx
+    const MAX_GAP_EM = 0.6;
+    const MAX_LEAD = 0.06;
+    const MIN_JUSTIFY = 0.6;
 
     const overflows = (sheet) => sheet.scrollHeight > sheet.clientHeight + 1;
     const blankSheet = () => Object.assign(document.createElement('section'), { className: 'sheet blank' });
@@ -298,8 +312,57 @@ a { color: inherit; text-decoration: none; }
         return [sheet, ...fit(next)];
     };
 
+    // how much of the line's width the block's last line covers (0-1)
+    const lastLineFill = (block) => {
+        const range = document.createRange();
+        range.selectNodeContents(block);
+        const rects = [...range.getClientRects()].filter((r) => r.width > 0);
+        if (!rects.length) return 0;
+        const style = getComputedStyle(block);
+        const lineHeight = parseFloat(style.lineHeight) || 0;
+        const bottom = Math.max(...rects.map((r) => r.bottom));
+        const line = rects.filter((r) => r.bottom > bottom - lineHeight / 2);
+        const width = block.getBoundingClientRect().width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+        return width > 0 ? (Math.max(...line.map((r) => r.right)) - Math.min(...line.map((r) => r.left))) / width : 0;
+    };
+
+    // spread the empty space under the last block over the gaps between blocks, then the line spacing
+    const fill = (sheet, endsMid) => {
+        const text = sheet.querySelector('.text');
+        const blocks = [...text.children];
+        const last = blocks[blocks.length - 1];
+        if (!last) return;
+        if (endsMid && lastLineFill(last) >= MIN_JUSTIFY) text.classList.add('ends-mid');
+
+        const room = text.getBoundingClientRect().bottom - last.getBoundingClientRect().bottom - parseFloat(getComputedStyle(last).marginBottom);
+        if (room < 1) return;
+        const gaps = blocks.length - 1;
+        let gap = gaps > 0 ? Math.min(room / gaps, MAX_GAP_EM * parseFloat(getComputedStyle(text).fontSize)) : 0;
+        const lines = blocks.filter((b) => b.tagName !== 'H3').reduce((sum, b) => sum + b.offsetHeight, 0);
+        let lead = lines > 0 ? 1 + Math.min((room - gap * gaps) / lines, MAX_LEAD) : 1;
+        const apply = () => {
+            sheet.style.setProperty('--gap', gap + 'px');
+            sheet.style.setProperty('--lead', lead);
+        };
+        apply();
+        // line boxes round to whole pixels: back off until it fits
+        while (overflows(sheet) && (lead > 1 || gap > 0)) {
+            if (lead > 1) lead = Math.max(1, lead - 0.004);
+            else gap = Math.max(0, gap - 1);
+            apply();
+        }
+    };
+
     for (const group of document.querySelectorAll('.page-group')) {
         const runs = [...group.querySelectorAll(':scope > .sheet')].map(fit);
+        for (const run of runs) {
+            const continues = run[0].hasAttribute('data-continues');
+            const endsMid = run[0].hasAttribute('data-ends-mid');
+            run.forEach((sheet, i) => {
+                const isLast = i === run.length - 1;
+                if (!isLast || continues) fill(sheet, isLast && endsMid);
+            });
+        }
         if (!BILINGUAL) continue;
         const [bn, ar] = runs;
         const spreads = Math.max(bn.length, ar.length);
